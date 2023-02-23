@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/main_screen.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 
 void main() {
@@ -14,7 +15,6 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> {
   late Socket socket;
-  String message = "None";
 
   Future<void> initSocket() async {
     try {
@@ -23,9 +23,6 @@ class _AppState extends State<App> {
         'autoConnect': true,
       });
       socket.connect();
-      socket.onConnect((_) {
-        debugPrint(socket.id);
-      });
     } catch (e) {
       debugPrint(e.toString());
     }
@@ -45,8 +42,8 @@ class _AppState extends State<App> {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(),
+    return MaterialApp(
+      home: MainScreen.fromMain(socket: socket),
     );
   }
 }
