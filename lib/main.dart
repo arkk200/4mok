@@ -29,15 +29,15 @@ class _AppState extends State<App> {
   }
 
   @override
-  void dispose() {
-    super.dispose();
-    socket.dispose();
-  }
-
-  @override
   void initState() {
     super.initState();
     initSocket();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    socket.dispose();
   }
 
   @override

@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/main_screen.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 
 class GameScreen extends StatefulWidget {
   final Socket socket;
   final String roomId;
   final String firstOrder;
-  final List<String> playersId;
+  final List playersInfo;
 
   const GameScreen.fromMainScreen({
     super.key,
     required this.socket,
     required this.roomId,
     required this.firstOrder,
-    required this.playersId,
+    required this.playersInfo,
   });
 
   @override
@@ -30,37 +31,45 @@ class _GameScreenState extends State<GameScreen> {
   void setSocketEvent() {
     socket.on('setMok', (data) {
       if (data == null) return;
+      // if (mounted) {
       setState(() {
         setMokLog.add({
           'x': data['x'],
           'y': data['y'],
         });
       });
+      // }
     });
     socket.on('placeMok', (data) {
       if (data == null) return;
-      setState(() {
-        order = data['order'];
-        placeMokLog.add({
-          'x': data['x'],
-          'y': data['y'],
+      if (mounted) {
+        setState(() {
+          order = data['order'];
+          placeMokLog.add({
+            'x': data['x'],
+            'y': data['y'],
+          });
         });
-      });
+      }
     });
     socket.on('gameOver', (data) {
-      setState(() {
-        if (data['isWin'] != null) {
-          handleShowGameOverAlert(data['isWin']);
-        }
-        if (data['oppResigned'] == true) {
-          handleShowOppResignedAlert();
-        }
-      });
+      debugPrint("line 55: Is it mounted? $mounted");
+      if (mounted) {
+        setState(() {
+          if (data['isWin'] != null) {
+            handleShowGameOverAlert(data['isWin']);
+          }
+          if (data['oppResigned'] == true) {
+            handleShowOppResignedAlert();
+          }
+        });
+      }
     });
   }
 
   @override
   void initState() {
+    debugPrint("line 71: Is it mounted? $mounted");
     super.initState();
     socket = widget.socket;
     order = widget.firstOrder;
@@ -75,7 +84,17 @@ class _GameScreenState extends State<GameScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation1, animation2) =>
+                      MainScreen.fromGameScreen(
+                    socket: socket,
+                  ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
+                ),
+              );
             },
             child: const Text("Ok"),
           ),
@@ -91,7 +110,7 @@ class _GameScreenState extends State<GameScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.of(context).pop();
               handleShowGameOverAlert(true);
             },
             child: const Text("Ok"),
@@ -114,7 +133,7 @@ class _GameScreenState extends State<GameScreen> {
       'x': posX,
       'y': posY,
       'order': order,
-      'playersId': widget.playersId,
+      'playersId': widget.playersInfo.map((info) => info['id']).toList(),
       'roomId': widget.roomId,
     });
   }
@@ -122,7 +141,7 @@ class _GameScreenState extends State<GameScreen> {
   void handleTimeOut() {
     socket.emit('timeOut', {
       'playerId': socket.id,
-      'playersId': widget.playersId,
+      'playersId': widget.playersInfo.map((info) => info['id']).toList(),
       'roomId': widget.roomId,
     });
   }
@@ -130,7 +149,7 @@ class _GameScreenState extends State<GameScreen> {
   void handleResignClick() {
     socket.emit('resign', {
       'playerId': socket.id,
-      'playersId': widget.playersId,
+      'playersId': widget.playersInfo.map((info) => info['id']).toList(),
       'roomId': widget.roomId,
     });
   }
