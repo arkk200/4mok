@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/game_screen.dart';
@@ -17,6 +18,9 @@ class _MainScreenState extends State<MainScreen> {
   late final Socket socket;
   Map<String, String> playerInfo = {};
   String? code;
+  int emoji = Random().nextInt(1) > 0.5
+      ? Random().nextInt(0xf8ff - 0xe000 + 1) + 0xe000
+      : Random().nextInt(0xf08b9 - 0xf0000 + 1) + 0xf0000;
 
   @override
   void initState() {
@@ -77,7 +81,7 @@ class _MainScreenState extends State<MainScreen> {
   void onHost(context) {
     showAlert(
       AlertDialog(
-        title: const Text('host'),
+        title: const Text('Host'),
         content: FutureBuilder(
           future: getCode(),
           builder: (context, snapshot) {
@@ -119,16 +123,22 @@ class _MainScreenState extends State<MainScreen> {
       ));
     });
     showAlert(AlertDialog(
-      title: const Text('join'),
+      title: const Text('Join'),
+      content: TextField(
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          hintText: "enter the code",
+        ),
+        onChanged: (value) {
+          code = value;
+        },
+      ),
       actions: [
-        TextField(
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: "enter the code",
-          ),
-          onChanged: (value) {
-            code = value;
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
           },
+          child: const Text("Cancel"),
         ),
         TextButton(
           onPressed: () {
@@ -138,11 +148,21 @@ class _MainScreenState extends State<MainScreen> {
               'code': code,
             });
           },
-          child: const Text("join"),
+          child: const Text("Join"),
         ),
       ],
     ));
     setFoundSocketEvent();
+  }
+
+  void changeIcon() {
+    const emojiRange1 = 0xf8ff - 0xe000 + 1;
+    const emojiRange2 = 0xf08b9 - 0xf0000 + 1;
+    setState(() {
+      emoji = Random().nextInt(emojiRange1 + emojiRange2) < emojiRange1
+          ? Random().nextInt(emojiRange1) + 0xe000
+          : Random().nextInt(emojiRange2) + 0xf0000;
+    });
   }
 
   @override
@@ -151,44 +171,152 @@ class _MainScreenState extends State<MainScreen> {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          TextField(
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              hintText: "nickname",
+          const Text(
+            "4mok",
+            style: TextStyle(
+              fontSize: 60,
             ),
-            onChanged: (value) {
-              setState(() {
-                playerInfo["nickname"] = value;
-              });
-            },
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.black,
-            ),
-            onPressed: () => handleConnectOnline(context),
-            child: const Text("online"),
           ),
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.black,
-                ),
-                onPressed: () => onHost(context),
-                child: const Text("host"),
+              IconButton(
+                onPressed: changeIcon,
+                icon: const Icon(Icons.change_circle_outlined),
+                iconSize: 32,
               ),
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.black,
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(50),
                 ),
-                onPressed: () {
-                  onJoin(context);
-                },
-                child: const Text("join"),
+                clipBehavior: Clip.hardEdge,
+                child: Icon(
+                  IconData(emoji, fontFamily: 'MaterialIcons'),
+                  size: 50,
+                ),
+              ),
+              const SizedBox(
+                width: 48,
+                height: 48,
+              )
+            ],
+          ),
+          Container(
+            width: 216,
+            height: 50,
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Colors.black,
+                width: 4,
+              ),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: TextField(
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                counterText: "",
+                hintText: "nickname",
+              ),
+              maxLength: 10,
+              style: const TextStyle(
+                fontSize: 20,
+                decoration: TextDecoration.underline,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  playerInfo["nickname"] = value;
+                });
+              },
+            ),
+          ),
+          const SizedBox(
+            height: 26,
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 216,
+                height: 50,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 4,
+                  ),
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: () => handleConnectOnline(context),
+                  child: const Text(
+                    "Online",
+                    style: TextStyle(fontSize: 22),
+                  ),
+                ),
+              ),
+              const SizedBox(
+                width: 34,
+              ),
+              Container(
+                width: 216,
+                height: 50,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 4,
+                  ),
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: () => showAlert(
+                    AlertDialog(
+                      content: Column(
+                        children: [
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.black,
+                            ),
+                            onPressed: () => onHost(context),
+                            child: const Text("Host"),
+                          ),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.black,
+                            ),
+                            onPressed: () {
+                              onJoin(context);
+                            },
+                            child: const Text("Join"),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: const Text("Cancel"),
+                        ),
+                      ],
+                    ),
+                  ),
+                  child: const Text(
+                    "With friend",
+                    style: TextStyle(fontSize: 22),
+                  ),
+                ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );

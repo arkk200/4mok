@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/main_screen.dart';
+import 'package:frontend/widgets/board_widget.dart';
 import 'package:socket_io_client/socket_io_client.dart';
+
+GlobalKey<BoardState> globalKey = GlobalKey();
 
 class GameScreen extends StatefulWidget {
   final Socket socket;
@@ -21,46 +24,48 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  // late BuildContext context;
   late final Socket socket;
-  late int posX;
   late int posY;
   late String order;
-  List<Map<String, int>> setMokLog = [], placeMokLog = [];
+  int? setMokPosY;
+  List<List<String>> board = [[], [], [], [], [], [], []];
 
   void setSocketEvent() {
     socket.on('setMok', (data) {
-      if (data == null) return;
-      // if (mounted) {
-      setState(() {
-        setMokLog.add({
-          'x': data['x'],
-          'y': data['y'],
-        });
-      });
-      // }
-    });
-    socket.on('placeMok', (data) {
-      if (data == null) return;
       if (mounted) {
         setState(() {
-          order = data['order'];
-          placeMokLog.add({
-            'x': data['x'],
-            'y': data['y'],
-          });
+          setMokPosY = data['y'];
         });
       }
     });
+    socket.on('placeMok', (data) {
+      if (mounted) {
+        setState(() {
+          order = data['order'];
+          board = (data['board'] as List)
+              .map(
+                (column) => (column as List)
+                    .map(
+                      (cell) => cell as String,
+                    )
+                    .toList(),
+              )
+              .toList();
+        });
+        globalKey.currentState?.handlePlaceMok();
+      }
+    });
     socket.on('gameOver', (data) {
-      debugPrint("line 55: Is it mounted? $mounted");
       if (mounted) {
         setState(() {
           if (data['isWin'] != null) {
-            handleShowGameOverAlert(data['isWin']);
+            handleMatchOverAlert(data['isWin']);
           }
           if (data['oppResigned'] == true) {
-            handleShowOppResignedAlert();
+            handleOppResignedAlert();
+          }
+          if (data['isDraw'] != null) {
+            handleDrawAlert();
           }
         });
       }
@@ -69,14 +74,13 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   void initState() {
-    debugPrint("line 71: Is it mounted? $mounted");
     super.initState();
     socket = widget.socket;
     order = widget.firstOrder;
     setSocketEvent();
   }
 
-  void handleShowGameOverAlert(isWin) {
+  void handleMatchOverAlert(isWin) {
     showAlert(
       AlertDialog(
         title: Text(isWin == true ? "You win" : "You lose"),
@@ -103,7 +107,34 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  void handleShowOppResignedAlert() {
+  void handleDrawAlert() {
+    showAlert(
+      AlertDialog(
+        title: const Text("Draw"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation1, animation2) =>
+                      MainScreen.fromGameScreen(
+                    socket: socket,
+                  ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
+                ),
+              );
+            },
+            child: const Text("Ok"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void handleOppResignedAlert() {
     showAlert(
       AlertDialog(
         title: const Text("Opponent resigned this game"),
@@ -111,7 +142,7 @@ class _GameScreenState extends State<GameScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              handleShowGameOverAlert(true);
+              handleMatchOverAlert(true);
             },
             child: const Text("Ok"),
           ),
@@ -121,20 +152,24 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void onSetMok() {
-    socket.emit('setMok', {
-      'x': posX,
-      'y': posY,
-      'roomId': widget.roomId,
+    setState(() {
+      socket.emit('setMok', {
+        'y': posY,
+        'roomId': widget.roomId,
+      });
     });
   }
 
   void onPlaceMok() {
-    socket.emit('placeMok', {
-      'x': posX,
-      'y': posY,
-      'order': order,
-      'playersId': widget.playersInfo.map((info) => info['id']).toList(),
-      'roomId': widget.roomId,
+    if (setMokPosY == null) return;
+    setState(() {
+      socket.emit('placeMok', {
+        'y': posY,
+        'order': order,
+        'playersId': widget.playersInfo.map((info) => info['id']).toList(),
+        'roomId': widget.roomId,
+        'board': board,
+      });
     });
   }
 
@@ -157,93 +192,116 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text("setMok log"),
-          Column(
-            children: [
-              for (var value in setMokLog) Text("${value['x']}, ${value['y']}")
-            ],
-          ),
-          const Text("placeMok log"),
-          Column(
-            children: [
-              for (var value in placeMokLog)
-                Text("${value['x']}, ${value['y']}")
-            ],
-          ),
-          Text(socket.id == order ? "Your turn" : "None"),
-          (socket.id == order
-              ? Column(
-                  children: [
-                    TextField(
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: "mok pos x",
-                      ),
-                      onChanged: (value) {
-                        posX = int.parse(value);
-                        debugPrint("$posX");
-                      },
-                    ),
-                    TextField(
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: "mok pos y",
-                      ),
-                      onChanged: (value) {
-                        posY = int.parse(value);
-                        debugPrint("$posY");
-                      },
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.black,
-                      ),
-                      onPressed: onSetMok,
-                      child: const Text("handle set mok"),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.black,
-                      ),
-                      onPressed: onPlaceMok,
-                      child: const Text("haneld place mok"),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.black,
-                      ),
-                      onPressed: handleTimeOut,
-                      child: const Text("handle time out"),
-                    ),
-                  ],
-                )
-              : const Text("Not your turn")),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.black,
-            ),
-            onPressed: () => showAlert(
-              AlertDialog(
-                title: const Text("Are you sure to resign this game?"),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Cancel"),
+          SizedBox(
+            width: 115,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  socket.id == order ? "Your turn" : "Opponent turn",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
                   ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      handleResignClick();
-                    },
-                    child: const Text("Ok"),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            child: const Text("resign"),
+          ),
+          Board(
+            key: globalKey,
+            setPos: (int y) {
+              if (socket.id != order) return;
+              setState(() {
+                posY = y;
+                onSetMok();
+              });
+            },
+            setMokPosY: setMokPosY,
+            initProperty: () => setState(() {
+              setMokPosY = null;
+            }),
+          ),
+          SizedBox(
+            width: 115,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                InkWell(
+                  child: Container(
+                    width: 88,
+                    height: 125,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(
+                        width: 4,
+                        color: const Color(0xFF0066FF),
+                      ),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.outlined_flag_rounded,
+                          size: 50,
+                          color: Color(0xFF0066FF),
+                        ),
+                        Text(
+                          "Resign",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF0066FF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  onTap: () => showAlert(
+                    AlertDialog(
+                      title: const Text("Are you sure to resign this game?"),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Cancel"),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            handleResignClick();
+                          },
+                          child: const Text("Ok"),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                InkWell(
+                    child: Container(
+                        width: 88,
+                        height: 125,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(25),
+                          border: Border.all(
+                            width: 4,
+                            color: socket.id == order
+                                ? const Color(0xFF42FF00)
+                                : Colors.grey.shade600,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.check_rounded,
+                          size: 50,
+                          color: socket.id == order
+                              ? const Color(0xFF42FF00)
+                              : Colors.grey.shade600,
+                        )),
+                    onTap: () {
+                      if (socket.id == order) onPlaceMok();
+                    }),
+              ],
+            ),
           ),
         ],
       ),
