@@ -18,7 +18,7 @@ class _MainScreenState extends State<MainScreen> {
   late final Socket socket;
   Map<String, String> playerInfo = {};
   String? code;
-  int emoji = Random().nextInt(1) > 0.5
+  int image = Random().nextInt(1) > 0.5
       ? Random().nextInt(0xf8ff - 0xe000 + 1) + 0xe000
       : Random().nextInt(0xf08b9 - 0xf0000 + 1) + 0xf0000;
 
@@ -26,6 +26,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     socket = widget.socket;
+    playerInfo['image'] = "$image";
   }
 
   void setFoundSocketEvent() {
@@ -159,9 +160,10 @@ class _MainScreenState extends State<MainScreen> {
     const emojiRange1 = 0xf8ff - 0xe000 + 1;
     const emojiRange2 = 0xf08b9 - 0xf0000 + 1;
     setState(() {
-      emoji = Random().nextInt(emojiRange1 + emojiRange2) < emojiRange1
+      image = Random().nextInt(emojiRange1 + emojiRange2) < emojiRange1
           ? Random().nextInt(emojiRange1) + 0xe000
           : Random().nextInt(emojiRange2) + 0xf0000;
+      playerInfo['image'] = "$image";
     });
   }
 
@@ -193,7 +195,7 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 clipBehavior: Clip.hardEdge,
                 child: Icon(
-                  IconData(emoji, fontFamily: 'MaterialIcons'),
+                  IconData(image, fontFamily: 'MaterialIcons'),
                   size: 50,
                 ),
               ),
