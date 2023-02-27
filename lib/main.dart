@@ -18,7 +18,7 @@ class _AppState extends State<App> {
 
   Future<void> initSocket() async {
     try {
-      socket = io('http://localhost:8080', <String, dynamic>{
+      socket = io('http://121.174.55.140:8080', <String, dynamic>{
         'transports': ['websocket'],
         'autoConnect': true,
       });
