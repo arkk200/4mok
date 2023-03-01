@@ -16,7 +16,10 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   late final Socket socket;
-  Map<String, String> playerInfo = {};
+  Map<String, String> playerInfo = {
+    "image": "",
+    "nickname": "",
+  };
   String? code;
   int image = Random().nextInt(1) > 0.5
       ? Random().nextInt(0xf8ff - 0xe000 + 1) + 0xe000
@@ -66,7 +69,11 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ],
     ));
-    socket.emit('online', playerInfo);
+    socket.emit('online', {
+      "nickname":
+          playerInfo['nickname'] == "" ? "unknown" : playerInfo['nickname'],
+      "image": playerInfo['image']
+    });
     setFoundSocketEvent();
   }
 
@@ -106,7 +113,11 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
     );
-    socket.emit('host', playerInfo);
+    socket.emit('host', {
+      "nickname":
+          playerInfo['nickname'] == "" ? "unknown" : playerInfo['nickname'],
+      "image": playerInfo['image'],
+    });
     setFoundSocketEvent();
   }
 
@@ -145,7 +156,12 @@ class _MainScreenState extends State<MainScreen> {
           onPressed: () {
             if (code?.length != 4) return;
             socket.emit('join', {
-              'playerInfo': playerInfo,
+              'playerInfo': {
+                "nickname": playerInfo['nickname'] == ""
+                    ? "unknown"
+                    : playerInfo['nickname'],
+                "image": playerInfo['image'],
+              },
               'code': code,
             });
           },
